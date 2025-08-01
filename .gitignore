@@ -1,0 +1,35 @@
+# Environment files with credentials
+.env
+.env.local
+.env.production
+
+# Data directories (contain user emails and indexes)
+data/maildir/
+data/notmuch/
+
+# Log files
+*.log
+logs/
+
+# Docker volumes
+docker-volumes/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp 

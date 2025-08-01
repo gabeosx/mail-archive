@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  ##########################################################
+  # SERVICE 1: IMAPSYNC (for Syncing and Pruning)
+  ##########################################################
+  imapsync:
+    image: gkoerk/imapsync:latest
+    env_file: .env
+    volumes:
+      - ./data/maildir:/maildir
+    working_dir: /maildir
+
+  ##########################################################
+  # SERVICE 2: NOTMUCH WEB (for Viewing and Searching)
+  ##########################################################
+  notmuch-web:
+    image: anarcat/notmuch-web
+    restart: unless-stopped
+    ports:
+      - "8090:8000"
+    env_file: .env
+    environment:
+      - NOTMUCH_WEB_USER=${WEB_USER}
+      - NOTMUCH_WEB_PASSWORD=${WEB_PASSWORD}
+    volumes:
+      - ./data/maildir:/home/user/mail:ro
+      - ./data/notmuch:/home/user/.notmuch
+    command: >
+      sh -c "notmuch setup && notmuch-web --host=0.0.0.0"
+
+  ##########################################################
+  # SERVICE 3: RCLONE (for Off-site Backups)
+  ##########################################################
+  rclone:
+    image: rclone/rclone:latest
+    env_file: .env
+    environment:
+      - RCLONE_CONFIG_B2_TYPE=b2
+      - RCLONE_CONFIG_B2_ACCOUNT=${B2_ACCOUNT_ID}
+      - RCLONE_CONFIG_B2_KEY=${B2_APPLICATION_KEY}
+    volumes:
+      - ./data/maildir:/data/maildir:ro 
