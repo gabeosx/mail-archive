@@ -1,0 +1,30 @@
+# mbsync configuration template for email sync
+# This file will be processed by the sync script to substitute environment variables
+
+# Define the IMAP account
+IMAPAccount email
+Host __IMAP_HOST__
+Port __IMAP_PORT__
+User __EMAIL_USER__
+Pass __EMAIL_PASS__
+SSLType IMAPS
+AuthMechs LOGIN
+
+# Define the remote IMAP store
+IMAPStore email-remote
+Account email
+
+# Define the local Maildir store  
+MaildirStore email-local
+SubFolders Verbatim
+Path /maildir/
+Inbox /maildir/INBOX
+
+# Define the sync channel
+Channel email-channel
+Far :email-remote:
+Near :email-local:
+Patterns __SYNC_FOLDERS__
+Create Both
+SyncState *
+Sync All

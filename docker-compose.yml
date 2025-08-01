@@ -2,14 +2,15 @@ version: '3.8'
 
 services:
   ##########################################################
-  # SERVICE 1: IMAPSYNC (for Syncing and Pruning)
+  # SERVICE 1: MBSYNC (for Syncing emails from IMAP to Maildir)
   ##########################################################
-  imapsync:
-    image: gkoerk/imapsync:latest
+  mbsync:
+    image: alpine:latest
     env_file: .env
     volumes:
       - ./data/maildir:/maildir
     working_dir: /maildir
+    command: sh -c "apk add --no-cache isync && if [ \"$$DRY_RUN\" = \"true\" ]; then mbsync --dry-run -a; else mbsync -a; fi"
 
   ##########################################################
   # SERVICE 2: NOTMUCH WEB (for Viewing and Searching)
@@ -40,4 +41,18 @@ services:
       - RCLONE_CONFIG_B2_ACCOUNT=${B2_ACCOUNT_ID}
       - RCLONE_CONFIG_B2_KEY=${B2_APPLICATION_KEY}
     volumes:
-      - ./data/maildir:/data/maildir:ro 
+      - ./data/maildir:/data/maildir:ro
+    command: sh -c "if [ \"$$DRY_RUN\" = \"true\" ]; then rclone sync /data/maildir \"b2:$${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/maildir \"b2:$${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
+
+  ##########################################################
+  # SERVICE 4: PYTHON PRUNE (for Pruning old emails from IMAP)
+  ##########################################################
+  prune-imap:
+    image: python:3.11-alpine
+    env_file: .env
+    environment:
+      - CUTOFF_DATE
+    volumes:
+      - ./scripts:/scripts
+    working_dir: /scripts
+    command: sh -c "if [ \"$$DRY_RUN\" = \"true\" ]; then python prune_imap.py --dry-run; else python prune_imap.py; fi" 

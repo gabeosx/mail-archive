@@ -2,17 +2,23 @@
 .env
 .env.local
 .env.production
+.env.*
+!.env.example
 
 # Data directories (contain user emails and indexes)
 data/maildir/
 data/notmuch/
+data/
 
 # Log files
 *.log
 logs/
+*.log.*
 
-# Docker volumes
+# Docker volumes and data
 docker-volumes/
+volumes/
+.docker/
 
 # OS generated files
 .DS_Store
@@ -32,4 +38,51 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+*.bak
+*.backup
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js (if any frontend components added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backup files
+*.backup
+*.old
+*.orig
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.csr
+
+# Database files (if any are added)
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+cache/
+
+# IDE and editor specific
+.atom/
+.brackets.json
+.sublime-project
+.sublime-workspace
+.cursor/ 
