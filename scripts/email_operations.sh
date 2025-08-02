@@ -86,9 +86,6 @@ run_sync() {
     # Generate mbsync config with actual credentials
     mkdir -p data/maildir
     
-    # Initialize Maildir structure to prevent assertion error
-    mkdir -p data/maildir/INBOX/{cur,new,tmp}
-    
     sed -e "s/__EMAIL_USER__/$EMAIL_USER/g" \
         -e "s/__EMAIL_PASS__/$EMAIL_PASS/g" \
         -e "s/__IMAP_HOST__/$IMAP_HOST/g" \

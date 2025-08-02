@@ -8,7 +8,7 @@ services:
     volumes:
       - ./data/maildir:/maildir
     working_dir: /maildir
-    command: sh -c "apk add --no-cache isync && if [ \"$$DRY_RUN\" = \"true\" ]; then mbsync --dry-run -c /maildir/.mbsyncrc -a; else mbsync -c /maildir/.mbsyncrc -a; fi"
+    command: sh -c "apk add --no-cache isync && mkdir -p /maildir/INBOX/{cur,new,tmp} && if [ \"$$DRY_RUN\" = \"true\" ]; then mbsync --dry-run -c /maildir/.mbsyncrc -a; else mbsync -c /maildir/.mbsyncrc -a; fi"
 
   ##########################################################
   # SERVICE 2: NOTMUCH WEB (for Viewing and Searching)
