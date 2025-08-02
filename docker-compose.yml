@@ -65,7 +65,7 @@ services:
     image: python:3.11-alpine
     env_file: .env
     environment:
-      - CUTOFF_DATE=${CUTOFF_DATE}
+      - CUTOFF_DATE=${CUTOFF_DATE:-}
       - DRY_RUN=${DRY_RUN:-false}
     volumes:
       - ./scripts:/scripts
