@@ -94,7 +94,9 @@ run_sync() {
         config/mbsyncrc > data/maildir/.mbsyncrc
     
     # Run mbsync with dry run support
-    docker compose run --rm --env DRY_RUN="$DRY_RUN_ENV" mbsync
+    export DRY_RUN="$DRY_RUN_ENV"
+    docker compose run --rm mbsync
+    unset DRY_RUN
     
     if [[ "$DRY_RUN_ENV" != "true" ]]; then
         echo "$(date): Sync complete. Indexing with notmuch..."
@@ -108,7 +110,9 @@ run_sync() {
 # Function to run backup operation
 run_backup() {
     echo "$(date): Starting backup operation..."
-    docker compose run --rm --env DRY_RUN="$DRY_RUN_ENV" rclone
+    export DRY_RUN="$DRY_RUN_ENV"
+    docker compose run --rm rclone
+    unset DRY_RUN
     echo "$(date): Backup operation complete."
 }
 
@@ -122,7 +126,10 @@ run_prune() {
     echo "$(date): Pruning emails older than $CUTOFF_DATE (${DAYS} days)..."
     
     # Run prune with dry run support
-    docker compose run --rm --env CUTOFF_DATE="$CUTOFF_DATE" --env DRY_RUN="$DRY_RUN_ENV" prune-imap
+    export CUTOFF_DATE="$CUTOFF_DATE"
+    export DRY_RUN="$DRY_RUN_ENV"
+    docker compose run --rm prune-imap
+    unset CUTOFF_DATE DRY_RUN
     echo "$(date): Prune operation complete."
 }
 
