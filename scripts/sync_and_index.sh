@@ -5,21 +5,18 @@
 set -e
 
 # Parse command line arguments
-DRY_RUN=""
-MBSYNC_FLAGS=""
+DRY_RUN_MODE="false"
 
 # Check for environment variable first
 if [ "${DRY_RUN:-false}" = "true" ]; then
-    DRY_RUN="--dry-run"
-    MBSYNC_FLAGS="--dry-run"
+    DRY_RUN_MODE="true"
     echo "Dry run mode enabled via environment variable"
 fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --dry-run)
-            DRY_RUN="--dry-run"
-            MBSYNC_FLAGS="--dry-run"
+            DRY_RUN_MODE="true"
             echo "Dry run mode enabled - no emails will actually be synced"
             shift
             ;;
@@ -63,12 +60,10 @@ sed -e "s/__EMAIL_USER__/$EMAIL_USER/g" \
     config/mbsyncrc > data/maildir/.mbsyncrc
 
 # Run mbsync to download emails from IMAP server to local Maildir
-docker compose run --rm mbsync \
-  -c /maildir/.mbsyncrc \
-  $MBSYNC_FLAGS \
-  email-channel
+# Set DRY_RUN environment variable for the container
+DRY_RUN="$DRY_RUN_MODE" docker compose run --rm mbsync
 
-if [[ -z "$DRY_RUN" ]]; then
+if [[ "$DRY_RUN_MODE" = "false" ]]; then
     echo "$(date): Sync complete. Indexing with notmuch..."
     
     # Trigger notmuch indexing

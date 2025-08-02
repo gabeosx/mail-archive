@@ -94,9 +94,7 @@ run_sync() {
         config/mbsyncrc > data/maildir/.mbsyncrc
     
     # Run mbsync with dry run support
-    export DRY_RUN="$DRY_RUN_ENV"
-    docker compose run --rm mbsync
-    unset DRY_RUN
+    DRY_RUN="$DRY_RUN_ENV" docker compose run --rm mbsync
     
     if [[ "$DRY_RUN_ENV" != "true" ]]; then
         echo "$(date): Sync complete. Indexing with notmuch..."
