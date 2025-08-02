@@ -5,6 +5,8 @@ services:
   mbsync:
     image: alpine:3.21
     env_file: .env
+    environment:
+      - DRY_RUN=${DRY_RUN:-false}
     volumes:
       - ./data/maildir:/maildir
     working_dir: /maildir
@@ -12,8 +14,8 @@ services:
       sh -c "
         apk add --no-cache isync &&
         mkdir -p /maildir/INBOX/{cur,new,tmp} &&
-        echo 'DEBUG: DRY_RUN environment variable = [$$DRY_RUN]' &&
-        if [ \"$$DRY_RUN\" = \"true\" ]; then
+        echo 'DEBUG: DRY_RUN environment variable = [$DRY_RUN]' &&
+        if [ \"$DRY_RUN\" = \"true\" ]; then
           echo '=== MBSYNC DRY-RUN MODE: SIMULATION ONLY - NO ACTUAL CHANGES ===' &&
           mbsync --dry-run --verbose -c /maildir/.mbsyncrc -a &&
           echo '=== DRY-RUN COMPLETE: NO FILES WERE MODIFIED ==='
@@ -51,9 +53,10 @@ services:
       - RCLONE_CONFIG_B2_TYPE=b2
       - RCLONE_CONFIG_B2_ACCOUNT=${B2_ACCOUNT_ID}
       - RCLONE_CONFIG_B2_KEY=${B2_APPLICATION_KEY}
+      - DRY_RUN=${DRY_RUN:-false}
     volumes:
       - ./data/maildir:/data/maildir:ro
-    command: sh -c "if [ \"$$DRY_RUN\" = \"true\" ]; then rclone sync /data/maildir \"b2:$${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/maildir \"b2:$${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
+    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then rclone sync /data/maildir \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/maildir \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
 
   ##########################################################
   # SERVICE 4: PYTHON PRUNE (for Pruning old emails from IMAP)
@@ -62,8 +65,9 @@ services:
     image: python:3.11-alpine
     env_file: .env
     environment:
-      - CUTOFF_DATE
+      - CUTOFF_DATE=${CUTOFF_DATE}
+      - DRY_RUN=${DRY_RUN:-false}
     volumes:
       - ./scripts:/scripts
     working_dir: /scripts
-    command: sh -c "if [ \"$$DRY_RUN\" = \"true\" ]; then python prune_imap.py --dry-run; else python prune_imap.py; fi" 
+    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then python prune_imap.py --dry-run; else python prune_imap.py; fi" 
