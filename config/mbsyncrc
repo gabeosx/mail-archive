@@ -9,6 +9,9 @@ User __EMAIL_USER__
 Pass __EMAIL_PASS__
 TLSType IMAPS
 AuthMechs LOGIN
+# Add timeout and connection settings for better reliability
+Timeout 120
+PipelineDepth 1
 
 # Define the remote IMAP store
 IMAPStore email-remote
