@@ -62,7 +62,11 @@ def main():
     imap_host = os.environ.get('IMAP_HOST')
     imap_port = os.environ.get('IMAP_PORT', '993')
     cutoff_date = os.environ.get('CUTOFF_DATE')
-    prune_days = os.environ.get('PRUNE_DAYS', '365')
+    prune_days = os.environ.get('PRUNE_DAYS')
+    if not prune_days:
+        print("Error: PRUNE_DAYS environment variable not set")
+        print("Please set PRUNE_DAYS in your .env file (e.g., PRUNE_DAYS=365)")
+        sys.exit(1)
     sync_folders = os.environ.get('SYNC_FOLDERS', '*')
     
     # Calculate cutoff_date if not provided (OS-agnostic date calculation)

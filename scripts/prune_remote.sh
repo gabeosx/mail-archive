@@ -48,9 +48,13 @@ fi
 
 source .env
 
-# Use PRUNE_DAYS from .env, default to 365 if not set
-DAYS=${PRUNE_DAYS:-365}
-echo "$(date): Pruning emails on IMAP server older than ${DAYS} days..."
+# Use PRUNE_DAYS from .env file
+if [ -z "$PRUNE_DAYS" ]; then
+    echo "Error: PRUNE_DAYS not set in .env file"
+    echo "Please set PRUNE_DAYS in your .env file (e.g., PRUNE_DAYS=365)"
+    exit 1
+fi
+echo "$(date): Pruning emails on IMAP server older than ${PRUNE_DAYS} days..."
 
 # Run Python script to delete old emails from IMAP server (let Python calculate cutoff date)
 docker run --rm -v "$(pwd)/scripts:/scripts" \

@@ -121,8 +121,12 @@ run_prune() {
     echo "$(date): Starting prune operation..."
     
     # Let Python script calculate cutoff date inside Docker container (OS-agnostic)
-    DAYS=${PRUNE_DAYS:-365}
-    echo "$(date): Pruning emails older than ${DAYS} days..."
+    if [ -z "$PRUNE_DAYS" ]; then
+        echo "Error: PRUNE_DAYS not set in .env file"
+        echo "Please set PRUNE_DAYS in your .env file (e.g., PRUNE_DAYS=365)"
+        exit 1
+    fi
+    echo "$(date): Pruning emails older than ${PRUNE_DAYS} days..."
     
     # Run prune with dry run support
     export DRY_RUN="$DRY_RUN_ENV"
