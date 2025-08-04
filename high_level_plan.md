@@ -1,6 +1,6 @@
-# Email Archiving System
+# Email Archiving System (updated approach)
 
-*Goal:* Periodically archive email from any IMAP server offline, prune old mail on the server, expose a browser-searchable archive, and back it up to Backblaze B2. All on your Ubuntu 24.04 Linux box via Docker, no full mail server.
+Goal: One-way IMAP pull to local Maildir, expose read-only archive via Dovecot + Roundcube, prune old mail on remote via imapfilter, and back up to B2 via rclone.
 
 ## Prerequisites
 
@@ -11,16 +11,27 @@
 
 ---
 
-## Directory layout (assumed root path)
+## Directory layout (host paths)
 
 ```text
-/srv/docker-data/email-archive/
-├── data/
-│   ├── maildir/             # local Maildir archive
-│   └── notmuch/             # notmuch index (ephemeral; can be rebuilt)
-├── scripts/                 # sync/prune/backup scripts
-├── .env                    # credentials
-└── docker-compose.yml
+/srv/docker-data/mail/
+├── archive/                             # Maildir archive (read-only to Dovecot)
+├── dovecot/
+│   ├── index/                           # Dovecot index path (rw)
+│   └── control/                         # Dovecot control path (rw)
+├── state/
+│   └── mbsync/                          # mbsync SyncState
+├── roundcube/
+│   └── db/                              # Roundcube DB (sqlite)
+├── config/
+│   ├── dovecot/                         # Dovecot conf.d
+│   ├── mbsync/                          # mbsync config (mbsyncrc)
+│   ├── roundcube/                       # Roundcube config.inc.php, etc.
+│   ├── imapfilter/                      # imapfilter config.lua
+│   └── rclone/                          # rclone config if not using secret
+└── secrets/
+    ├── yahoo_app_password               # Yahoo app password for IMAP
+    └── rclone.conf                      # rclone remote config
 ```
 
 Ensure ownership/permissions restrict access to credentials (e.g., `.env` chmod 600).
@@ -55,9 +66,7 @@ PRUNE_DAYS=365
 
 ---
 
-## 2. `docker-compose.yml`
-
-Place this at `/srv/docker-data/email-archive/docker-compose.yml`:
+## 2. docker-compose
 
 ```yaml
 version: '3.8'
@@ -76,22 +85,23 @@ services:
     command: sh -c "apk add --no-cache isync && mbsync -a"
 
   ##########################################################
-  # SERVICE 2: NOTMUCH WEB (for Viewing and Searching)
+  # SERVICE 2: DOVECOT + ROUNDCUBE (view/search only)
   ##########################################################
-  notmuch-web:
-    image: anarcat/notmuch-web
-    restart: unless-stopped
-    ports:
-      - "8090:8000"
-    env_file: .env
-    environment:
-      - NOTMUCH_WEB_USER=${WEB_USER}
-      - NOTMUCH_WEB_PASSWORD=${WEB_PASSWORD}
+  dovecot:
+    image: ghcr.io/tiredofit/docker-dovecot:latest
     volumes:
-      - ./data/maildir:/home/user/mail:ro
-      - ./data/notmuch:/home/user/.notmuch
-    command: >
-      sh -c "notmuch setup && notmuch-web --host=0.0.0.0"
+      - /srv/docker-data/mail/archive:/srv/mail/archive:ro
+      - /srv/docker-data/mail/dovecot/index:/var/dovecot/index:rw
+      - /srv/docker-data/mail/dovecot/control:/var/dovecot/control:rw
+      - /srv/docker-data/mail/config/dovecot:/etc/dovecot:ro
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    ports:
+      - "8080:80"
+    environment:
+      - ROUNDCUBE_DEFAULT_HOST=dovecot
+    volumes:
+      - /srv/docker-data/mail/roundcube/db:/var/roundcube/db:rw
 
   ##########################################################
   # SERVICE 3: RCLONE (for Off-site Backups)

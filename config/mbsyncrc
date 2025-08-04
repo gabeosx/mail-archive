@@ -1,15 +1,13 @@
 # mbsync configuration template for email sync
 # This file will be processed by the sync script to substitute environment variables
 
-# Define the IMAP account
 IMAPAccount email
 Host __IMAP_HOST__
 Port __IMAP_PORT__
 User __EMAIL_USER__
-Pass __EMAIL_PASS__
+PassCmd "cat /run/secrets/yahoo_app_password"
 TLSType IMAPS
 AuthMechs LOGIN
-# Add timeout and connection settings for better reliability
 Timeout 120
 PipelineDepth 1
 
@@ -17,13 +15,12 @@ PipelineDepth 1
 IMAPStore email-remote
 Account email
 
-# Define the local Maildir store  
+# Define the local Maildir store (bind-mounted at /srv/mail/archive)  
 MaildirStore email-local
 SubFolders Verbatim
-Path /maildir/
-Inbox /maildir/INBOX
+Path /srv/mail/archive/
+Inbox /srv/mail/archive/INBOX
 
-# Define the sync channel
 Channel email-channel
 Far :email-remote:
 Near :email-local:

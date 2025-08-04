@@ -1,7 +1,7 @@
 #!/bin/bash
 # email_operations.sh - Comprehensive email archive operations using docker-compose
 # Usage: ./email_operations.sh [operation] [--dry-run]
-# Operations: sync, backup, prune, all
+# Operations: sync, filter, backup, all
 
 set -e
 
@@ -24,10 +24,10 @@ show_usage() {
     echo "Usage: $0 [operation] [--dry-run]"
     echo ""
     echo "Operations:"
-    echo "  sync     - Sync emails from IMAP server and index with notmuch"
-    echo "  backup   - Backup local maildir to Backblaze B2"
-    echo "  prune    - Prune old emails from IMAP server"
-    echo "  all      - Run all operations (sync, backup, prune)"
+    echo "  sync     - Sync emails from IMAP server (mbsync)"
+    echo "  filter   - Cleanup/prune on remote IMAP using imapfilter"
+    echo "  backup   - Backup local archive to Backblaze B2 (rclone)"
+    echo "  all      - Run sync → filter → backup"
     echo ""
     echo "Options:"
     echo "  --dry-run - Show what would happen without making changes"
@@ -46,7 +46,7 @@ DRY_RUN_ENV="false"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        sync|backup|prune|all)
+        sync|filter|backup|all)
             if [ -n "$OPERATION" ]; then
                 echo "Error: Multiple operations specified. Please specify only one."
                 show_usage
@@ -79,35 +79,38 @@ if [ -z "$OPERATION" ]; then
     exit 1
 fi
 
-# Function to run sync operation
+# Function to run sync operation (mbsync)
 run_sync() {
     echo "$(date): Starting email sync operation..."
     
-    # Generate mbsync config with actual credentials
-    mkdir -p data/maildir
-    
+    # Prepare host config path for mbsync used by the container
+    HOST_MBSYNC_CONFIG_DIR="/srv/docker-data/mail/config/mbsync"
+    mkdir -p "$HOST_MBSYNC_CONFIG_DIR"
+
+    # Generate mbsync config with actual credentials (password read from secret in container)
     sed -e "s/__EMAIL_USER__/$EMAIL_USER/g" \
-        -e "s/__EMAIL_PASS__/$EMAIL_PASS/g" \
         -e "s/__IMAP_HOST__/$IMAP_HOST/g" \
         -e "s/__IMAP_PORT__/$IMAP_PORT/g" \
         -e "s/__SYNC_FOLDERS__/$SYNC_FOLDERS/g" \
-        config/mbsyncrc > data/maildir/.mbsyncrc
-    
+        config/mbsyncrc > "$HOST_MBSYNC_CONFIG_DIR/mbsyncrc"
+
     # Run mbsync with dry run support
     export DRY_RUN="$DRY_RUN_ENV"
     docker compose run --rm mbsync
     unset DRY_RUN
-    
-    if [[ "$DRY_RUN_ENV" != "true" ]]; then
-        echo "$(date): Sync complete. Indexing with notmuch..."
-        docker compose exec notmuch-web notmuch new
-        echo "$(date): Indexing complete."
-    else
-        echo "$(date): Dry run complete. No indexing performed in dry run mode."
-    fi
+    echo "$(date): Sync complete."
 }
 
-# Function to run backup operation
+# Function to run filter/prune operation (imapfilter)
+run_filter() {
+    echo "$(date): Starting imapfilter prune operation..."
+    export DRY_RUN="$DRY_RUN_ENV"
+    docker compose run --rm imapfilter
+    unset DRY_RUN
+    echo "$(date): imapfilter operation complete."
+}
+
+# Function to run backup operation (rclone)
 run_backup() {
     echo "$(date): Starting backup operation..."
     export DRY_RUN="$DRY_RUN_ENV"
@@ -116,39 +119,24 @@ run_backup() {
     echo "$(date): Backup operation complete."
 }
 
-# Function to run prune operation
-run_prune() {
-    echo "$(date): Starting prune operation..."
-    
-    # Let Python script calculate cutoff date inside Docker container (OS-agnostic)
-    DAYS=${PRUNE_DAYS:-365}
-    echo "$(date): Pruning emails older than ${DAYS} days..."
-    
-    # Run prune with dry run support
-    export DRY_RUN="$DRY_RUN_ENV"
-    docker compose run --rm prune-imap
-    unset DRY_RUN
-    echo "$(date): Prune operation complete."
-}
-
 # Execute the requested operation
 case $OPERATION in
     sync)
         run_sync
         ;;
+    filter)
+        run_filter
+        ;;
     backup)
         run_backup
         ;;
-    prune)
-        run_prune
-        ;;
     all)
-        echo "$(date): Running all email operations..."
+        echo "$(date): Running sync → filter → backup..."
         run_sync
         echo ""
-        run_backup
+        run_filter
         echo ""
-        run_prune
+        run_backup
         echo "$(date): All operations complete."
         ;;
 esac

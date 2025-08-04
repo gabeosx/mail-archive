@@ -1,5 +1,5 @@
 #!/bin/bash
-# sync_and_index.sh - Syncs email from IMAP server and triggers notmuch indexing.
+# sync_and_index.sh - Syncs email from IMAP server (mbsync).
 # Usage: ./sync_and_index.sh [--dry-run]
 
 set -e
@@ -48,30 +48,19 @@ fi
 
 source .env
 
-echo "$(date): Starting email sync from IMAP server..."
+echo "$(date): Starting email sync from IMAP server (mbsync)..."
 
-# Generate mbsync config with actual credentials
-mkdir -p data/maildir
+HOST_MBSYNC_CONFIG_DIR="/srv/docker-data/mail/config/mbsync"
+mkdir -p "$HOST_MBSYNC_CONFIG_DIR"
 sed -e "s/__EMAIL_USER__/$EMAIL_USER/g" \
-    -e "s/__EMAIL_PASS__/$EMAIL_PASS/g" \
     -e "s/__IMAP_HOST__/$IMAP_HOST/g" \
     -e "s/__IMAP_PORT__/$IMAP_PORT/g" \
     -e "s/__SYNC_FOLDERS__/$SYNC_FOLDERS/g" \
-    config/mbsyncrc > data/maildir/.mbsyncrc
+    config/mbsyncrc > "$HOST_MBSYNC_CONFIG_DIR/mbsyncrc"
 
 # Run mbsync to download emails from IMAP server to local Maildir
-# Set DRY_RUN environment variable for the container
 export DRY_RUN="$DRY_RUN_MODE"
 docker compose run --rm mbsync
 unset DRY_RUN
 
-if [[ "$DRY_RUN_MODE" = "false" ]]; then
-    echo "$(date): Sync complete. Indexing with notmuch..."
-    
-    # Trigger notmuch indexing
-    docker compose exec notmuch-web notmuch new
-    
-    echo "$(date): Indexing complete."
-else
-    echo "$(date): Dry run complete. No indexing performed in dry run mode."
-fi 
+echo "$(date): Sync complete."

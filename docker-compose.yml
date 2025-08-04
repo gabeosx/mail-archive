@@ -1,51 +1,65 @@
 services:
-  ##########################################################
-  # SERVICE 1: MBSYNC (for Syncing emails from IMAP to Maildir)
-  ##########################################################
+  dovecot:
+    image: ghcr.io/tiredofit/docker-dovecot:latest
+    restart: unless-stopped
+    volumes:
+      - /srv/docker-data/mail/archive:/srv/mail/archive:ro
+      - /srv/docker-data/mail/dovecot/index:/var/dovecot/index:rw
+      - /srv/docker-data/mail/dovecot/control:/var/dovecot/control:rw
+      - /srv/docker-data/mail/config/dovecot:/etc/dovecot:ro
+    # No public ports; only internal network access for Roundcube
+
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - ROUNDCUBE_DEFAULT_HOST=dovecot
+      - ROUNDCUBE_DEFAULT_PORT=143
+      - ROUNDCUBE_DB_TYPE=sqlite
+      - ROUNDCUBE_DB_PATH=/var/roundcube/db/sqlite.db
+    volumes:
+      - /srv/docker-data/mail/roundcube/db:/var/roundcube/db:rw
+      - /srv/docker-data/mail/config/roundcube:/var/roundcube/config:ro
+    depends_on:
+      - dovecot
+
   mbsync:
     image: alpine:3.21
     env_file: .env
     environment:
       - DRY_RUN=${DRY_RUN:-false}
     volumes:
-      - ./data/maildir:/maildir
-    working_dir: /maildir
+      - /srv/docker-data/mail/archive:/srv/mail/archive:rw
+      - /srv/docker-data/mail/state/mbsync:/var/lib/mbsync:rw
+      - /srv/docker-data/mail/config/mbsync:/etc/mbsync:ro
+    secrets:
+      - yahoo_app_password
+    working_dir: /srv/mail/archive
     command: |
       sh -c "
         apk add --no-cache isync &&
-        mkdir -p /maildir/INBOX/{cur,new,tmp} &&
+        mkdir -p /srv/mail/archive/INBOX/{cur,new,tmp} &&
         echo 'DEBUG: DRY_RUN environment variable = [$DRY_RUN]' &&
         if [ \"$DRY_RUN\" = \"true\" ]; then
           echo '=== MBSYNC DRY-RUN MODE: SIMULATION ONLY - NO ACTUAL CHANGES ===' &&
-          mbsync --dry-run --verbose -c /maildir/.mbsyncrc -a &&
+          mbsync --dry-run --verbose -c /etc/mbsync/mbsyncrc -a &&
           echo '=== DRY-RUN COMPLETE: NO FILES WERE MODIFIED ==='
         else
           echo '=== MBSYNC LIVE MODE: ACTUAL SYNC OPERATION ===' &&
-          mbsync --verbose -c /maildir/.mbsyncrc -a
+          mbsync --verbose -c /etc/mbsync/mbsyncrc -a
         fi
       "
 
-  ##########################################################
-  # SERVICE 2: NOTMUCH WEB (for Viewing and Searching)
-  ##########################################################
-  notmuch-web:
-    image: anarcat/notmuch-web
-    restart: unless-stopped
-    ports:
-      - "8090:8000"
+  imapfilter:
+    build: ./imapfilter
     env_file: .env
-    environment:
-      - NOTMUCH_WEB_USER=${WEB_USER}
-      - NOTMUCH_WEB_PASSWORD=${WEB_PASSWORD}
     volumes:
-      - ./data/maildir:/home/user/mail:ro
-      - ./data/notmuch:/home/user/.notmuch
-    command: >
-      sh -c "notmuch setup && notmuch-web --host=0.0.0.0"
+      - /srv/docker-data/mail/config/imapfilter:/etc/imapfilter:ro
+    secrets:
+      - yahoo_app_password
 
-  ##########################################################
-  # SERVICE 3: RCLONE (for Off-site Backups)
-  ##########################################################
   rclone:
     image: rclone/rclone:latest
     env_file: .env
@@ -55,18 +69,30 @@ services:
       - RCLONE_CONFIG_B2_KEY=${B2_APPLICATION_KEY}
       - DRY_RUN=${DRY_RUN:-false}
     volumes:
-      - ./data/maildir:/data/maildir:ro
-    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then rclone sync /data/maildir \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/maildir \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
+      - /srv/docker-data/mail:/data:ro
+      - /srv/docker-data/mail/config/rclone:/config/rclone:ro
+    secrets:
+      - rclone_credentials
+    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
 
-  ##########################################################
-  # SERVICE 4: PYTHON PRUNE (for Pruning old emails from IMAP)
-  ##########################################################
-  prune-imap:
-    image: python:3.11-alpine
-    env_file: .env
-    environment:
-      - DRY_RUN=${DRY_RUN:-false}
+  compress:
+    image: alpine:3.21
     volumes:
-      - ./scripts:/scripts
-    working_dir: /scripts
-    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then python prune_imap.py --dry-run; else python prune_imap.py; fi" 
+      - /srv/docker-data/mail/archive:/srv/mail/archive:rw
+    command: ["/bin/sh", "-c", "echo 'stub compress task - plug in doveadm compress here'"]
+
+  ofelia:
+    image: mcuadros/ofelia:latest
+    depends_on:
+      - mbsync
+      - imapfilter
+      - rclone
+      - compress
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+secrets:
+  yahoo_app_password:
+    file: /srv/docker-data/mail/secrets/yahoo_app_password
+  rclone_credentials:
+    file: /srv/docker-data/mail/secrets/rclone.conf

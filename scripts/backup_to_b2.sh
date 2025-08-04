@@ -53,7 +53,7 @@ source .env
 
 echo "$(date): Starting backup to Backblaze B2..."
 
-# Run rclone to sync local Maildir to Backblaze B2
-docker compose run --rm rclone sync /data/maildir "b2:${B2_BUCKET_NAME}/email-archive" --fast-list $RCLONE_FLAGS
+# Run rclone to sync local archive tree to Backblaze B2
+docker compose run --rm rclone sh -c "rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list $RCLONE_FLAGS"
 
 echo "$(date): Backup complete." 

@@ -1,5 +1,6 @@
 # Environment files with credentials
 .env
+/srv/docker-data/
 .env.local
 .env.production
 .env.*
@@ -86,3 +87,5 @@ cache/
 .sublime-project
 .sublime-workspace
 .cursor/ 
+
+new_version.md

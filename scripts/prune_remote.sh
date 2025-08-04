@@ -1,5 +1,5 @@
 #!/bin/bash
-# prune_remote.sh - Deletes emails on IMAP server older than configured days.
+# prune_remote.sh - Runs imapfilter to delete old emails on remote IMAP.
 # Usage: ./prune_remote.sh [--dry-run]
 
 set -e
@@ -48,20 +48,17 @@ fi
 
 source .env
 
-# Use PRUNE_DAYS from .env, default to 365 if not set
-DAYS=${PRUNE_DAYS:-365}
-echo "$(date): Pruning emails on IMAP server older than ${DAYS} days..."
+# Use PRUNE_DAYS from .env file
+if [ -z "$PRUNE_DAYS" ]; then
+    echo "Error: PRUNE_DAYS not set in .env file"
+    echo "Please set PRUNE_DAYS in your .env file (e.g., PRUNE_DAYS=365)"
+    exit 1
+fi
+echo "$(date): Running imapfilter to prune emails older than ${PRUNE_DAYS} days..."
 
-# Run Python script to delete old emails from IMAP server (let Python calculate cutoff date)
-docker run --rm -v "$(pwd)/scripts:/scripts" \
-  -e EMAIL_USER="$EMAIL_USER" \
-  -e EMAIL_PASS="$EMAIL_PASS" \
-  -e IMAP_HOST="$IMAP_HOST" \
-  -e IMAP_PORT="$IMAP_PORT" \
-  -e PRUNE_DAYS="$DAYS" \
-  -e SYNC_FOLDERS="$SYNC_FOLDERS" \
-  -e DRY_RUN="$DRY_RUN" \
-  python:3.11-alpine \
-  python /scripts/prune_imap.py $DRY_RUN
+# Use docker compose service for imapfilter (config-driven; reads DRY_RUN env)
+export DRY_RUN="$([ -n "$DRY_RUN" ] && echo true || echo false)"
+docker compose run --rm imapfilter
+unset DRY_RUN
 
 echo "$(date): Pruning complete." 

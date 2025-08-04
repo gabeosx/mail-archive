@@ -1,15 +1,19 @@
-# Email Archiving System
+# Mail Archive (mbsync → imapfilter → rclone + Dovecot/Roundcube)
 
-A Docker-based email archiving system that periodically syncs email from any IMAP server offline, prunes old mail on the server, exposes a browser-searchable archive, and backs it up to Backblaze B2.
+A Docker-based email archiving system that:
+
+- Syncs emails from an IMAP server to a local Maildir using mbsync
+- Serves a read-only IMAP archive via Dovecot and web UI via Roundcube
+- Optionally prunes old mail on the remote server using imapfilter
+- Backs up the archive to Backblaze B2 using rclone
 
 ## Features
 
-- **Email Sync**: Downloads emails from any IMAP server (Gmail, Yahoo, Outlook, etc.)
-- **Web Interface**: Browser-searchable archive using Notmuch Web
-- **Automatic Pruning**: Removes old emails from IMAP server (configurable)
-- **Cloud Backup**: Automatic backup to Backblaze B2
+- **Email Sync (mbsync)**: One-way IMAP pull to local Maildir
+- **Read-only IMAP + UI**: Dovecot backend, Roundcube frontend on port 8080
+- **Pruning (imapfilter)**: Deletes old mail on remote server after sync
+- **Backup (rclone)**: Syncs archive to B2 (or S3-compatible)
 - **Docker-based**: Easy deployment and management
-- **Version Controlled**: Git repository for easy updates and customization
 
 ## Prerequisites
 
@@ -35,29 +39,43 @@ A Docker-based email archiving system that periodically syncs email from any IMA
    # Edit .env with your actual credentials
    ```
 
-3. **Start the web interface**:
+3. **Prepare host paths (once, on the host):**
    ```bash
-   docker compose up -d notmuch-web
+   sudo mkdir -p \
+     /srv/docker-data/mail/archive \
+     /srv/docker-data/mail/dovecot/{index,control} \
+     /srv/docker-data/mail/state/mbsync \
+     /srv/docker-data/mail/roundcube/db \
+     /srv/docker-data/mail/config/{dovecot,mbsync,roundcube,imapfilter,rclone} \
+     /srv/docker-data/mail/secrets
    ```
 
-4. **Test all operations (recommended)**:
+4. **Place secrets (on the host):**
+   - `/srv/docker-data/mail/secrets/yahoo_app_password`
+   - `/srv/docker-data/mail/secrets/rclone.conf` (optional; or use env)
+
+5. **Start Dovecot and Roundcube UI**:
+   ```bash
+   docker compose up -d dovecot roundcube
+   ```
+
+6. **Test all operations (recommended)**:
    ```bash
    ./scripts/email_operations.sh all --dry-run
    ```
 
-5. **Run initial sync**:
+7. **Run initial sync**:
    ```bash
    ./scripts/email_operations.sh sync
    ```
 
-6. **Access the web interface** at `http://your-server-ip:8090`
+8. **Access the Roundcube UI** at `http://your-server-ip:8080`
 
-7. **Run regular operations** (backup and optionally prune):
+9. **Run regular operations** (filter then backup):
    ```bash
+   ./scripts/email_operations.sh filter --dry-run
+   ./scripts/email_operations.sh filter
    ./scripts/email_operations.sh backup
-   # Only run prune after testing with --dry-run first!
-   ./scripts/email_operations.sh prune --dry-run
-   ./scripts/email_operations.sh prune
    ```
 
 ## ⚠️ IMPORTANT: Testing Strategy for Valuable Email Archives
@@ -118,7 +136,7 @@ DRY_RUN=false              # Will use --dry-run flags instead
    ```
 
 5. **Test web interface**:
-   - Access `http://your-server:8090`
+   - Access `http://your-server:8080`
    - Verify emails appear correctly
    - Test search functionality
    - Check email content displays properly
@@ -173,7 +191,7 @@ PRUNE_DAYS=365             # Still conservative
    docker compose logs -f mbsync
    
    # Check growing maildir size using Docker
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest du -sh /maildir/
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest du -sh /maildir/
    ```
 
 5. **Verify complete archive**:
@@ -182,7 +200,7 @@ PRUNE_DAYS=365             # Still conservative
    docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest ls -la /maildir/
    
    # Count total emails using Docker
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest \
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest \
      sh -c "find /maildir -name '*.eml' -o -name '*:2,*' | wc -l"
    
    # Check largest folders using Docker
@@ -276,7 +294,7 @@ SYNC_FOLDERS=INBOX         # Test on single folder first
 **Steps**:
 1. **Test pruning with dry-run**:
    ```bash
-   ./scripts/email_operations.sh prune --dry-run
+    ./scripts/email_operations.sh filter --dry-run
    ```
 
 2. **Carefully review dry-run output**:
@@ -286,7 +304,7 @@ SYNC_FOLDERS=INBOX         # Test on single folder first
 
 3. **If comfortable, run conservative pruning**:
    ```bash
-   ./scripts/email_operations.sh prune
+    ./scripts/email_operations.sh filter
    ```
 
 4. **Verify pruning results**:
@@ -363,9 +381,9 @@ B2_ACCOUNT_ID=your_b2_account_id
 B2_APPLICATION_KEY=your_b2_application_key
 B2_BUCKET_NAME=your-b2-bucket-name
 
-# Web UI auth
-WEB_USER=admin
-WEB_PASSWORD=choose-a-strong-password
+# Roundcube Web UI auth (optional; may configure through UI)
+WEB_USER=
+WEB_PASSWORD=
 
 # Email synchronization and pruning configuration
 PRUNE_DAYS=365
@@ -378,8 +396,7 @@ PRUNE_DAYS=365
 #   SYNC_FOLDERS=INBOX "[Gmail]/Sent Mail"   # Gmail-style folders
 SYNC_FOLDERS=*
 
-# Dry run mode - set to "true" to enable dry run for all operations
-# When enabled, shows what would happen without making actual changes
+# Dry run mode - set to "true" to enable dry run for mbsync/imapfilter/rclone
 DRY_RUN=false
 ```
 
