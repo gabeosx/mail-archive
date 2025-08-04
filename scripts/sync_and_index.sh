@@ -61,7 +61,9 @@ sed -e "s/__EMAIL_USER__/$EMAIL_USER/g" \
 
 # Run mbsync to download emails from IMAP server to local Maildir
 # Set DRY_RUN environment variable for the container
-DRY_RUN="$DRY_RUN_MODE" docker compose run --rm mbsync
+export DRY_RUN="$DRY_RUN_MODE"
+docker compose run --rm mbsync
+unset DRY_RUN
 
 if [[ "$DRY_RUN_MODE" = "false" ]]; then
     echo "$(date): Sync complete. Indexing with notmuch..."
