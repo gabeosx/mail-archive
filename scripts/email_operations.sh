@@ -122,7 +122,8 @@ run_prune() {
     
     # Calculate cutoff date
     DAYS=${PRUNE_DAYS:-365}
-    CUTOFF_DATE=$(date -d "$DAYS days ago" '+%d-%b-%Y')
+    # Use BSD date syntax for macOS compatibility
+    CUTOFF_DATE=$(date -v-${DAYS}d '+%d-%b-%Y')
     echo "$(date): Pruning emails older than $CUTOFF_DATE (${DAYS} days)..."
     
     # Run prune with dry run support

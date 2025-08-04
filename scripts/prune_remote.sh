@@ -50,7 +50,8 @@ source .env
 
 # Use PRUNE_DAYS from .env, default to 365 if not set
 DAYS=${PRUNE_DAYS:-365}
-CUTOFF_DATE=$(date -d "$DAYS days ago" '+%d-%b-%Y')
+# Use BSD date syntax for macOS compatibility
+CUTOFF_DATE=$(date -v-${DAYS}d '+%d-%b-%Y')
 echo "$(date): Pruning emails on IMAP server older than $CUTOFF_DATE (${DAYS} days)..."
 
 # Run Python script to delete old emails from IMAP server
