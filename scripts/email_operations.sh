@@ -120,17 +120,14 @@ run_backup() {
 run_prune() {
     echo "$(date): Starting prune operation..."
     
-    # Calculate cutoff date
+    # Let Python script calculate cutoff date inside Docker container (OS-agnostic)
     DAYS=${PRUNE_DAYS:-365}
-    # Use BSD date syntax for macOS compatibility
-    CUTOFF_DATE=$(date -v-${DAYS}d '+%d-%b-%Y')
-    echo "$(date): Pruning emails older than $CUTOFF_DATE (${DAYS} days)..."
+    echo "$(date): Pruning emails older than ${DAYS} days..."
     
     # Run prune with dry run support
-    export CUTOFF_DATE="$CUTOFF_DATE"
     export DRY_RUN="$DRY_RUN_ENV"
     docker compose run --rm prune-imap
-    unset CUTOFF_DATE DRY_RUN
+    unset DRY_RUN
     echo "$(date): Prune operation complete."
 }
 

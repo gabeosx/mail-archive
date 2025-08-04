@@ -65,9 +65,21 @@ def main():
     prune_days = os.environ.get('PRUNE_DAYS', '365')
     sync_folders = os.environ.get('SYNC_FOLDERS', '*')
     
-    if not all([email_user, email_pass, imap_host, cutoff_date]):
+    # Calculate cutoff_date if not provided (OS-agnostic date calculation)
+    if not cutoff_date:
+        try:
+            days_back = int(prune_days)
+            cutoff_datetime = datetime.now() - timedelta(days=days_back)
+            cutoff_date = cutoff_datetime.strftime('%d-%b-%Y')
+            print(f"Calculated cutoff date from PRUNE_DAYS ({prune_days}): {cutoff_date}")
+        except ValueError:
+            print(f"Error: Invalid PRUNE_DAYS value: {prune_days}")
+            sys.exit(1)
+    
+    if not all([email_user, email_pass, imap_host]):
         print("Error: Missing required environment variables")
-        print("Required: EMAIL_USER, EMAIL_PASS, IMAP_HOST, CUTOFF_DATE")
+        print("Required: EMAIL_USER, EMAIL_PASS, IMAP_HOST")
+        print("Optional: CUTOFF_DATE (will be calculated from PRUNE_DAYS if not provided)")
         sys.exit(1)
     
     try:

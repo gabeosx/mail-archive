@@ -50,19 +50,17 @@ source .env
 
 # Use PRUNE_DAYS from .env, default to 365 if not set
 DAYS=${PRUNE_DAYS:-365}
-# Use BSD date syntax for macOS compatibility
-CUTOFF_DATE=$(date -v-${DAYS}d '+%d-%b-%Y')
-echo "$(date): Pruning emails on IMAP server older than $CUTOFF_DATE (${DAYS} days)..."
+echo "$(date): Pruning emails on IMAP server older than ${DAYS} days..."
 
-# Run Python script to delete old emails from IMAP server
+# Run Python script to delete old emails from IMAP server (let Python calculate cutoff date)
 docker run --rm -v "$(pwd)/scripts:/scripts" \
   -e EMAIL_USER="$EMAIL_USER" \
   -e EMAIL_PASS="$EMAIL_PASS" \
   -e IMAP_HOST="$IMAP_HOST" \
   -e IMAP_PORT="$IMAP_PORT" \
-  -e CUTOFF_DATE="$CUTOFF_DATE" \
   -e PRUNE_DAYS="$DAYS" \
   -e SYNC_FOLDERS="$SYNC_FOLDERS" \
+  -e DRY_RUN="$DRY_RUN" \
   python:3.11-alpine \
   python /scripts/prune_imap.py $DRY_RUN
 
