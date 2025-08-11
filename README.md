@@ -53,7 +53,7 @@ A Docker-based email archiving system that:
 4. **Place configs and secrets (on the host):**
    - Dovecot config in `/srv/docker-data/mail/config/dovecot/` (must define `mail_location` pointing at `/srv/mail/archive`)
    - Roundcube config (optional) in `/srv/docker-data/mail/config/roundcube/`
-   - `/srv/docker-data/mail/secrets/yahoo_app_password`
+   - `/srv/docker-data/mail/secrets/imap_password` (or set `EMAIL_PASS` in `.env`)
    - `/srv/docker-data/mail/secrets/rclone.conf` (optional; or use env)
 
 5. **Start Dovecot and Roundcube UI**:
@@ -370,6 +370,8 @@ Copy `env.example` to `.env` and configure:
 # Email Provider Credentials
 EMAIL_USER=your-email@example.com
 EMAIL_PASS=your-email-password-or-app-password
+# Or provide via file for Docker secrets compatibility
+# EMAIL_PASS_FILE=/run/secrets/imap_password
 
 # IMAP Server Configuration
 IMAP_HOST=imap.example.com
@@ -437,7 +439,9 @@ IMAP_PORT=993
 ### Yahoo Configuration
 ```ini
 EMAIL_USER=your-email@yahoo.com
+# Either set the password directly or use a secret file
 EMAIL_PASS=your-yahoo-app-password
+# EMAIL_PASS_FILE=/run/secrets/imap_password
 IMAP_HOST=imap.mail.yahoo.com
 IMAP_PORT=993
 ```

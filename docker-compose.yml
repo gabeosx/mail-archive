@@ -35,7 +35,7 @@ services:
       - /srv/docker-data/mail/state/mbsync:/var/lib/mbsync:rw
       - /srv/docker-data/mail/config/mbsync:/etc/mbsync:ro
     secrets:
-      - yahoo_app_password
+      - imap_password
     working_dir: /srv/mail/archive
     command: |
       sh -c "
@@ -60,7 +60,7 @@ services:
     volumes:
       - /srv/docker-data/mail/config/imapfilter:/etc/imapfilter:ro
     secrets:
-      - yahoo_app_password
+      - imap_password
 
   rclone:
     image: rclone/rclone:latest
@@ -94,7 +94,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
 secrets:
-  yahoo_app_password:
-    file: /srv/docker-data/mail/secrets/yahoo_app_password
+  imap_password:
+    file: /srv/docker-data/mail/secrets/imap_password
   rclone_credentials:
     file: /srv/docker-data/mail/secrets/rclone.conf

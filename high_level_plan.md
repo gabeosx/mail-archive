@@ -30,7 +30,7 @@ Goal: One-way IMAP pull to local Maildir, expose read-only archive via Dovecot +
 │   ├── imapfilter/                      # imapfilter config.lua
 │   └── rclone/                          # rclone config if not using secret
 └── secrets/
-    ├── yahoo_app_password               # Yahoo app password for IMAP
+    ├── imap_password                    # IMAP password (any provider) for Docker secret
     └── rclone.conf                      # rclone remote config
 ```
 

@@ -5,7 +5,7 @@ IMAPAccount email
 Host __IMAP_HOST__
 Port __IMAP_PORT__
 User __EMAIL_USER__
-PassCmd "cat /run/secrets/yahoo_app_password"
+PassCmd "sh -c 'FILE=${EMAIL_PASS_FILE:-/run/secrets/imap_password}; if [ -f "$FILE" ]; then cat "$FILE"; elif [ -n "$EMAIL_PASS" ]; then printf "%s" "$EMAIL_PASS"; else echo "Error: no EMAIL_PASS_FILE or EMAIL_PASS provided" >&2; exit 1; fi'"
 TLSType IMAPS
 AuthMechs LOGIN
 Timeout 120

@@ -15,11 +15,15 @@ if not USER or not HOST then
   os.exit(1)
 end
 
--- Prefer reading password from Docker secret if present
-local secret_path = '/run/secrets/yahoo_app_password'
+-- Prefer reading password from Docker secret if present; allow override via EMAIL_PASS_FILE
+local secret_path = env('EMAIL_PASS_FILE') or '/run/secrets/imap_password'
 local f = io.open(secret_path, 'r')
 if f ~= nil then
-  PASS = f:read('*a') or PASS
+  local content = f:read('*a')
+  if content ~= nil then
+    -- Trim trailing newlines/spaces
+    PASS = (content:gsub('%s+$', ''))
+  end
   f:close()
 end
 

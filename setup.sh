@@ -26,7 +26,7 @@ if [ ! -f .env ]; then
     cp env.example .env
     echo "✅ Created .env file"
     echo "⚠️  Please edit .env file with your credentials before proceeding"
-    echo "   - Yahoo email and app password"
+    echo "   - Email and app password (generic; any provider)"
     echo "   - Backblaze B2 credentials"
     echo "   - Web interface username and password"
     exit 0
