@@ -8,7 +8,11 @@ set -e
 DRY_RUN=""
 RCLONE_FLAGS=""
 
-# Check for environment variable first
+# Load environment variables (prefer existing exported DRY_RUN if set)
+if [ -f .env ]; then
+    # shellcheck disable=SC2046
+    set -a; . ./.env; set +a
+fi
 if [ "${DRY_RUN:-false}" = "true" ]; then
     DRY_RUN="--dry-run"
     RCLONE_FLAGS="--dry-run"
@@ -43,17 +47,17 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR" || exit 1
 
-# Load environment variables
+# Load required environment variables from .env if not already present
 if [ ! -f .env ]; then
     echo "Error: .env file not found. Please copy env.example to .env and configure your credentials."
     exit 1
 fi
-
-source .env
+# shellcheck disable=SC1091
+. ./.env
 
 echo "$(date): Starting backup to Backblaze B2..."
 
 # Run rclone to sync local archive tree to Backblaze B2
-docker compose run --rm rclone sh -c "rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list $RCLONE_FLAGS"
+docker compose run --rm rclone sh -c "rclone sync /data/archive \"B2:${B2_BUCKET_NAME}/email-archive\" --fast-list $RCLONE_FLAGS"
 
 echo "$(date): Backup complete." 

@@ -30,7 +30,7 @@ A Docker-based email archiving system that:
 1. **Clone this repository**:
    ```bash
    git clone <your-repo-url>
-   cd email-archive
+   cd mail-archive
    ```
 
 2. **Configure your credentials**:
@@ -50,7 +50,9 @@ A Docker-based email archiving system that:
      /srv/docker-data/mail/secrets
    ```
 
-4. **Place secrets (on the host):**
+4. **Place configs and secrets (on the host):**
+   - Dovecot config in `/srv/docker-data/mail/config/dovecot/` (must define `mail_location` pointing at `/srv/mail/archive`)
+   - Roundcube config (optional) in `/srv/docker-data/mail/config/roundcube/`
    - `/srv/docker-data/mail/secrets/yahoo_app_password`
    - `/srv/docker-data/mail/secrets/rclone.conf` (optional; or use env)
 
@@ -126,12 +128,12 @@ DRY_RUN=false              # Will use --dry-run flags instead
 
 4. **Verify sync results**:
    ```bash
-   # Check local Maildir structure using Docker (same environment as sync)
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest ls -la /maildir/
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest ls -la /maildir/INBOX/cur/
+    # Check local Maildir structure using Docker (same environment as sync)
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest ls -la /maildir/
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest ls -la /maildir/INBOX/cur/
    
    # Count emails in local archive using Docker
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest \
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest \
      sh -c "find /maildir/INBOX -name '*.eml' -o -name '*:2,*' | wc -l"
    ```
 
@@ -196,15 +198,15 @@ PRUNE_DAYS=365             # Still conservative
 
 5. **Verify complete archive**:
    ```bash
-   # Check all folders were created using Docker (same environment as operations)
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest ls -la /maildir/
+    # Check all folders were created using Docker (same environment as operations)
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest ls -la /maildir/
    
    # Count total emails using Docker
     docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest \
      sh -c "find /maildir -name '*.eml' -o -name '*:2,*' | wc -l"
    
    # Check largest folders using Docker
-   docker run --rm -v "$(pwd)/data/maildir:/maildir" alpine:latest \
+    docker run --rm -v "/srv/docker-data/mail/archive:/maildir" alpine:latest \
      sh -c "du -sh /maildir/*/ | sort -hr"
    ```
 
@@ -235,11 +237,11 @@ PRUNE_DAYS=365             # Still conservative
    # Source environment variables first
    source .env
    
-   # Check backup contents using the same rclone container
-   docker compose run --rm rclone ls "b2:${B2_BUCKET_NAME}/email-archive/" | head -20
-   
-   # Check total backup size using Docker rclone
-   docker compose run --rm rclone size "b2:${B2_BUCKET_NAME}/email-archive/"
+    # Check backup contents using the same rclone container
+    docker compose run --rm rclone ls "B2:${B2_BUCKET_NAME}/email-archive/" | head -20
+    
+    # Check total backup size using Docker rclone
+    docker compose run --rm rclone size "B2:${B2_BUCKET_NAME}/email-archive/"
    ```
 
 3. **Test recovery procedure using Docker**:
@@ -250,14 +252,14 @@ PRUNE_DAYS=365             # Still conservative
    # Create test recovery area
    mkdir test-recovery
    
-   # Download a sample folder from backup using Docker rclone (same as operations)
+    # Download a sample folder from backup using Docker rclone (same as operations)
    docker run --rm \
      -v "$(pwd)/test-recovery:/data" \
      -e RCLONE_CONFIG_B2_TYPE=b2 \
      -e RCLONE_CONFIG_B2_ACCOUNT="${B2_ACCOUNT_ID}" \
      -e RCLONE_CONFIG_B2_KEY="${B2_APPLICATION_KEY}" \
      rclone/rclone:latest \
-     copy "b2:${B2_BUCKET_NAME}/email-archive/INBOX" /data/INBOX/ --max-transfer 100M
+      copy "B2:${B2_BUCKET_NAME}/email-archive/INBOX" /data/INBOX/ --max-transfer 100M
    
    # Verify emails are intact using Docker
    docker run --rm -v "$(pwd)/test-recovery:/data" alpine:latest ls -la /data/INBOX/cur/ | head -10
@@ -353,13 +355,10 @@ If something goes wrong:
    # Source environment variables first
    source .env
    
-   # Use the same rclone container as backup operations
-   docker compose run --rm rclone sync "b2:${B2_BUCKET_NAME}/email-archive/" /data/maildir/
+    # Use the same rclone container as backup operations
+    docker compose run --rm rclone sync "B2:${B2_BUCKET_NAME}/email-archive/" /data/maildir/
    ```
-4. **Rebuild search index**:
-   ```bash
-   docker compose exec notmuch-web notmuch new
-   ```
+4. Inspect Roundcube logs and reload the page. Indexing is handled by Dovecot/IMAP, no manual rebuild needed.
 
 ## Configuration
 
@@ -507,7 +506,7 @@ All scripts support dry run mode to safely test functionality without making per
 # Option 2: Test using the comprehensive docker-compose approach
 ./scripts/email_operations.sh sync --dry-run
 ./scripts/email_operations.sh backup --dry-run
-./scripts/email_operations.sh prune --dry-run
+./scripts/email_operations.sh filter --dry-run
 
 # Option 3: Test all operations at once
 ./scripts/email_operations.sh all --dry-run
@@ -523,7 +522,7 @@ export DRY_RUN=true
 **Comprehensive email operations using docker-compose**:
 
 ```bash
-# Run all operations (sync, backup, prune)
+# Run all operations (sync, filter, backup)
 ./scripts/email_operations.sh all
 
 # Test all operations with dry run
@@ -532,12 +531,12 @@ export DRY_RUN=true
 # Run individual operations
 ./scripts/email_operations.sh sync
 ./scripts/email_operations.sh backup
-./scripts/email_operations.sh prune
+./scripts/email_operations.sh filter
 
 # Test individual operations
 ./scripts/email_operations.sh sync --dry-run
 ./scripts/email_operations.sh backup --dry-run
-./scripts/email_operations.sh prune --dry-run
+./scripts/email_operations.sh filter --dry-run
 ```
 
 **Direct docker-compose commands**:
@@ -546,9 +545,9 @@ export DRY_RUN=true
 export DRY_RUN=true
 
 # Run individual services
-docker compose run --rm mbsync -c /maildir/.mbsyncrc email-channel
+docker compose run --rm mbsync
 docker compose run --rm rclone
-docker compose run --rm prune-imap
+docker compose run --rm imapfilter
 ```
 
 ### Manual Operations (Individual Scripts)
@@ -602,8 +601,7 @@ email-archive/
 ├── config/
 │   └── mbsyncrc            # mbsync configuration
 ├── data/
-│   ├── maildir/            # Local Maildir archive
-│   └── notmuch/            # Notmuch index (ephemeral)
+│   └── maildir/            # Local Maildir archive
 ├── scripts/
 │   ├── email_operations.sh # Comprehensive operations (recommended)
 │   ├── sync_and_index.sh   # Sync and index emails
@@ -623,10 +621,10 @@ email-archive/
 - Uses the `isync` package in Alpine Linux
 - Configured via `config/mbsyncrc`
 
-### 2. Notmuch Web
-- Provides web interface for searching emails
-- Runs on port 8090
-- Uses the `anarcat/notmuch-web` Docker image
+### 2. Roundcube Web
+- Provides web interface for browsing emails via Dovecot
+- Runs on port 8080
+- Uses the `roundcube/roundcubemail` Docker image
 
 ### 3. Rclone
 - Handles backup to Backblaze B2
@@ -650,7 +648,7 @@ email-archive/
 
 **Web interface not accessible**:
 ```bash
-docker compose logs notmuch-web
+docker compose logs roundcube
 ```
 
 **Sync fails**:
@@ -677,12 +675,7 @@ View service logs:
 docker compose logs -f [service-name]
 ```
 
-### Rebuilding Index
-
-If the notmuch index gets corrupted:
-```bash
-docker compose exec notmuch-web notmuch new
-```
+ 
 
 ## Updating
 
@@ -691,7 +684,7 @@ To update the system:
 ```bash
 git pull
 docker compose pull
-docker compose up -d notmuch-web
+docker compose up -d roundcube dovecot
 ```
 
 ## Contributing

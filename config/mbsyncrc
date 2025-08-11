@@ -25,6 +25,6 @@ Channel email-channel
 Far :email-remote:
 Near :email-local:
 Patterns __SYNC_FOLDERS__
-Create Both
+Create Near
 SyncState *
-Sync All
+Sync Pull

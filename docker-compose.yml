@@ -55,6 +55,8 @@ services:
   imapfilter:
     build: ./imapfilter
     env_file: .env
+    environment:
+      - DRY_RUN=${DRY_RUN:-false}
     volumes:
       - /srv/docker-data/mail/config/imapfilter:/etc/imapfilter:ro
     secrets:
@@ -73,7 +75,7 @@ services:
       - /srv/docker-data/mail/config/rclone:/config/rclone:ro
     secrets:
       - rclone_credentials
-    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/archive \"b2:${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
+    command: sh -c "if [ \"$DRY_RUN\" = \"true\" ]; then rclone sync /data/archive \"B2:${B2_BUCKET_NAME}/email-archive\" --fast-list --dry-run; else rclone sync /data/archive \"B2:${B2_BUCKET_NAME}/email-archive\" --fast-list; fi"
 
   compress:
     image: alpine:3.21

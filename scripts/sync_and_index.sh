@@ -7,7 +7,7 @@ set -e
 # Parse command line arguments
 DRY_RUN_MODE="false"
 
-# Check for environment variable first
+# Check for environment variable first (allow external DRY_RUN to win)
 if [ "${DRY_RUN:-false}" = "true" ]; then
     DRY_RUN_MODE="true"
     echo "Dry run mode enabled via environment variable"
@@ -40,13 +40,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR" || exit 1
 
-# Load environment variables
+# Load required environment variables from .env
 if [ ! -f .env ]; then
     echo "Error: .env file not found. Please copy env.example to .env and configure your credentials."
     exit 1
 fi
-
-source .env
+# shellcheck disable=SC1091
+source ./.env
 
 echo "$(date): Starting email sync from IMAP server (mbsync)..."
 

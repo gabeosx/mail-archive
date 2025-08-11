@@ -26,7 +26,7 @@ end
 -- Build account
 options = {
   timeout = 120,
-  ssl = 'ssl3',
+  ssl = 'tls1',
 }
 
 account = IMAP {
@@ -34,7 +34,7 @@ account = IMAP {
   port = PORT,
   username = USER,
   password = PASS,
-  ssl = 'ssl3'
+  ssl = 'tls1'
 }
 
 -- Helper to split SYNC_FOLDERS env string into a table, respecting quotes
