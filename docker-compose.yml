@@ -1,6 +1,6 @@
 services:
   dovecot:
-    image: ghcr.io/tiredofit/docker-dovecot:latest
+    image: dovecot/dovecot:latest
     restart: unless-stopped
     volumes:
       - /srv/docker-data/mail/archive:/srv/mail/archive:ro
